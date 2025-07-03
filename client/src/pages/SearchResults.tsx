@@ -48,7 +48,7 @@ export default function SearchResults() {
   const handleNewSearch = (filters: any) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value && value !== "" && value !== false) {
+      if (value && value !== "" && value !== false && value !== "all") {
         if (Array.isArray(value)) {
           if (key === "priceRange") {
             params.set("minPrice", value[0].toString());
@@ -57,12 +57,16 @@ export default function SearchResults() {
             params.set("maxMileage", value[1].toString());
           }
         } else {
-          params.set(key, value.toString());
+          if (key !== "priceRange" && key !== "mileageRange") {
+            params.set(key, value.toString());
+          }
         }
       }
     });
     
-    window.location.href = `/search?${params.toString()}`;
+    // Use wouter navigation instead of window.location
+    window.history.pushState({}, '', `/search?${params.toString()}`);
+    window.location.reload();
   };
 
   const sortedCars = cars ? [...cars].sort((a, b) => {
