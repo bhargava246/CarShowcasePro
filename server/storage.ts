@@ -1,680 +1,432 @@
-import { ObjectId } from 'mongodb';
-import { database } from './db';
-import type { 
-  User, InsertUser, Dealer, InsertDealer, Car, InsertCar, 
-  Review, InsertReview, FavoriteCar, InsertFavoriteCar,
-  InventoryLog, InsertInventoryLog, Sale, InsertSale,
-  DealerAnalytics, InsertDealerAnalytics, CarSearchFilters,
-  convertGoogleDriveUrl, calculateCarPrice
-} from '@shared/schema';
+import { users, dealers, cars, reviews, favoriteCars, type User, type Dealer, type Car, type Review, type FavoriteCar, type InsertUser, type InsertDealer, type InsertCar, type InsertReview, type InsertFavoriteCar } from "@shared/schema";
 
 export interface IStorage {
   // User operations
-  getUser(id: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
   // Dealer operations
-  getDealer(id: string): Promise<Dealer | undefined>;
+  getDealer(id: number): Promise<Dealer | undefined>;
   getAllDealers(): Promise<Dealer[]>;
   getDealersByLocation(location: string): Promise<Dealer[]>;
   createDealer(dealer: InsertDealer): Promise<Dealer>;
-  updateDealerRating(id: string, rating: number, reviewCount: number): Promise<void>;
+  updateDealerRating(id: number, rating: number, reviewCount: number): Promise<void>;
   
   // Car operations
-  getCar(id: string): Promise<Car | undefined>;
+  getCar(id: number): Promise<Car | undefined>;
   getAllCars(): Promise<Car[]>;
-  getCarsByDealer(dealerId: string): Promise<Car[]>;
-  searchCars(filters: CarSearchFilters): Promise<{ cars: Car[]; total: number }>;
+  getCarsByDealer(dealerId: number): Promise<Car[]>;
+  searchCars(filters: {
+    make?: string;
+    model?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minYear?: number;
+    maxYear?: number;
+    fuelType?: string;
+    transmission?: string;
+    bodyType?: string;
+    maxMileage?: number;
+  }): Promise<Car[]>;
   getFeaturedCars(): Promise<Car[]>;
   createCar(car: InsertCar): Promise<Car>;
-  updateCar(id: string, updates: Partial<InsertCar>): Promise<Car | undefined>;
+  updateCar(id: number, updates: Partial<InsertCar>): Promise<Car | undefined>;
   
   // Review operations
-  getReview(id: string): Promise<Review | undefined>;
-  getReviewsByDealer(dealerId: string): Promise<Review[]>;
-  getReviewsByCar(carId: string): Promise<Review[]>;
+  getReview(id: number): Promise<Review | undefined>;
+  getReviewsByDealer(dealerId: number): Promise<Review[]>;
+  getReviewsByCar(carId: number): Promise<Review[]>;
   createReview(review: InsertReview): Promise<Review>;
   
   // Favorite operations
-  getUserFavorites(userId: string): Promise<FavoriteCar[]>;
+  getUserFavorites(userId: number): Promise<FavoriteCar[]>;
   addToFavorites(favorite: InsertFavoriteCar): Promise<FavoriteCar>;
-  removeFromFavorites(userId: string, carId: string): Promise<void>;
-  
-  // Inventory Management operations
-  createInventoryLog(log: InsertInventoryLog): Promise<InventoryLog>;
-  getInventoryLogs(dealerId: string): Promise<InventoryLog[]>;
-  
-  // Sales operations
-  createSale(sale: InsertSale): Promise<Sale>;
-  getSalesByDealer(dealerId: string): Promise<Sale[]>;
-  updateSale(id: string, updates: Partial<InsertSale>): Promise<Sale | undefined>;
-  
-  // Analytics operations
-  createDealerAnalytics(analytics: InsertDealerAnalytics): Promise<DealerAnalytics>;
-  getDealerAnalytics(dealerId: string, period: string): Promise<DealerAnalytics[]>;
+  removeFromFavorites(userId: number, carId: number): Promise<void>;
 }
 
-export class MongoDBStorage implements IStorage {
-  private async getCollection<T>(name: string) {
-    const db = database.getDb();
-    return db.collection<T>(name);
+export class MemStorage implements IStorage {
+  private users: Map<number, User> = new Map();
+  private dealers: Map<number, Dealer> = new Map();
+  private cars: Map<number, Car> = new Map();
+  private reviews: Map<number, Review> = new Map();
+  private favorites: Map<number, FavoriteCar> = new Map();
+  private currentUserId = 1;
+  private currentDealerId = 1;
+  private currentCarId = 1;
+  private currentReviewId = 1;
+  private currentFavoriteId = 1;
+
+  constructor() {
+    this.seedData();
   }
 
-  // Helper to convert MongoDB _id to string and remove _id from response
-  private formatDocument<T extends { _id?: string }>(doc: any): T {
-    if (!doc) return doc;
-    if (doc._id && typeof doc._id === 'object') {
-      doc._id = doc._id.toString();
-    }
-    return doc;
-  }
-
-  // User operations
-  async getUser(id: string): Promise<User | undefined> {
-    const collection = await this.getCollection<User>('users');
-    const user = await collection.findOne({ _id: new ObjectId(id) });
-    return this.formatDocument(user);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const collection = await this.getCollection<User>('users');
-    const user = await collection.findOne({ username });
-    return this.formatDocument(user);
-  }
-
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const collection = await this.getCollection<User>('users');
-    const user = await collection.findOne({ email });
-    return this.formatDocument(user);
-  }
-
-  async createUser(userData: InsertUser): Promise<User> {
-    const collection = await this.getCollection<User>('users');
-    const user = {
-      ...userData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(user);
-    return this.formatDocument({ ...user, _id: result.insertedId.toString() });
-  }
-
-  // Dealer operations
-  async getDealer(id: string): Promise<Dealer | undefined> {
-    const collection = await this.getCollection<Dealer>('dealers');
-    const dealer = await collection.findOne({ _id: new ObjectId(id) });
-    return this.formatDocument(dealer);
-  }
-
-  async getAllDealers(): Promise<Dealer[]> {
-    const collection = await this.getCollection<Dealer>('dealers');
-    const dealers = await collection.find({}).toArray();
-    return dealers.map(dealer => this.formatDocument(dealer));
-  }
-
-  async getDealersByLocation(location: string): Promise<Dealer[]> {
-    const collection = await this.getCollection<Dealer>('dealers');
-    const dealers = await collection.find({ 
-      location: { $regex: location, $options: 'i' } 
-    }).toArray();
-    return dealers.map(dealer => this.formatDocument(dealer));
-  }
-
-  async createDealer(dealerData: InsertDealer): Promise<Dealer> {
-    const collection = await this.getCollection<Dealer>('dealers');
-    const dealer = {
-      ...dealerData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(dealer);
-    return this.formatDocument({ ...dealer, _id: result.insertedId.toString() });
-  }
-
-  async updateDealerRating(id: string, rating: number, reviewCount: number): Promise<void> {
-    const collection = await this.getCollection<Dealer>('dealers');
-    await collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { rating, reviewCount } }
-    );
-  }
-
-  // Car operations with enhanced features
-  async getCar(id: string): Promise<Car | undefined> {
-    const collection = await this.getCollection<Car>('cars');
-    const car = await collection.findOne({ _id: new ObjectId(id) });
-    const formattedCar = this.formatDocument(car);
-    
-    if (formattedCar) {
-      // Convert Google Drive URLs to direct links
-      if (formattedCar.googleDriveImages) {
-        formattedCar.googleDriveImages = formattedCar.googleDriveImages.map(convertGoogleDriveUrl);
-      }
-    }
-    
-    return formattedCar;
-  }
-
-  async getAllCars(): Promise<Car[]> {
-    const collection = await this.getCollection<Car>('cars');
-    const cars = await collection.find({}).sort({ createdAt: -1 }).toArray();
-    return cars.map(car => {
-      const formattedCar = this.formatDocument(car);
-      if (formattedCar.googleDriveImages) {
-        formattedCar.googleDriveImages = formattedCar.googleDriveImages.map(convertGoogleDriveUrl);
-      }
-      return formattedCar;
-    });
-  }
-
-  async getCarsByDealer(dealerId: string): Promise<Car[]> {
-    const collection = await this.getCollection<Car>('cars');
-    const cars = await collection.find({ dealerId }).sort({ createdAt: -1 }).toArray();
-    return cars.map(car => {
-      const formattedCar = this.formatDocument(car);
-      if (formattedCar.googleDriveImages) {
-        formattedCar.googleDriveImages = formattedCar.googleDriveImages.map(convertGoogleDriveUrl);
-      }
-      return formattedCar;
-    });
-  }
-
-  async searchCars(filters: CarSearchFilters): Promise<{ cars: Car[]; total: number }> {
-    const collection = await this.getCollection<Car>('cars');
-    const query: any = {};
-
-    // Build search query
-    if (filters.make) query.make = { $regex: filters.make, $options: 'i' };
-    if (filters.model) query.model = { $regex: filters.model, $options: 'i' };
-    if (filters.minPrice || filters.maxPrice) {
-      query.price = {};
-      if (filters.minPrice) query.price.$gte = filters.minPrice;
-      if (filters.maxPrice) query.price.$lte = filters.maxPrice;
-    }
-    if (filters.minYear || filters.maxYear) {
-      query.year = {};
-      if (filters.minYear) query.year.$gte = filters.minYear;
-      if (filters.maxYear) query.year.$lte = filters.maxYear;
-    }
-    if (filters.fuelType) query.fuelType = filters.fuelType;
-    if (filters.transmission) query.transmission = filters.transmission;
-    if (filters.bodyType) query.bodyType = filters.bodyType;
-    if (filters.maxMileage) query.mileage = { $lte: filters.maxMileage };
-    if (filters.condition) query.condition = filters.condition;
-    if (filters.dealerId) query.dealerId = filters.dealerId;
-
-    // Sort options
-    let sort: any = {};
-    switch (filters.sortBy) {
-      case 'price_asc':
-        sort.price = 1;
-        break;
-      case 'price_desc':
-        sort.price = -1;
-        break;
-      case 'year_desc':
-        sort.year = -1;
-        break;
-      case 'mileage_asc':
-        sort.mileage = 1;
-        break;
-      default:
-        sort.createdAt = -1;
-    }
-
-    const total = await collection.countDocuments(query);
-    const cars = await collection
-      .find(query)
-      .sort(sort)
-      .skip(filters.offset)
-      .limit(filters.limit)
-      .toArray();
-
-    return {
-      cars: cars.map(car => {
-        const formattedCar = this.formatDocument(car);
-        if (formattedCar.googleDriveImages) {
-          formattedCar.googleDriveImages = formattedCar.googleDriveImages.map(convertGoogleDriveUrl);
-        }
-        return formattedCar;
-      }),
-      total
-    };
-  }
-
-  async getFeaturedCars(): Promise<Car[]> {
-    const collection = await this.getCollection<Car>('cars');
-    const cars = await collection
-      .find({ available: true, inventoryStatus: 'in_stock' })
-      .sort({ createdAt: -1 })
-      .limit(8)
-      .toArray();
-    
-    return cars.map(car => {
-      const formattedCar = this.formatDocument(car);
-      if (formattedCar.googleDriveImages) {
-        formattedCar.googleDriveImages = formattedCar.googleDriveImages.map(convertGoogleDriveUrl);
-      }
-      return formattedCar;
-    });
-  }
-
-  async createCar(carData: InsertCar): Promise<Car> {
-    const collection = await this.getCollection<Car>('cars');
-    
-    // Calculate fair market price
-    let calculatedPrice;
-    try {
-      const priceResult = calculateCarPrice({
-        basePrice: carData.price,
-        mileage: carData.mileage,
-        year: carData.year,
-        condition: carData.condition,
-        features: carData.features || [],
-        make: carData.make,
-        model: carData.model,
-      });
-      calculatedPrice = priceResult.adjustedPrice;
-    } catch (error) {
-      calculatedPrice = carData.price; // Fallback to original price
-    }
-
-    const car = {
-      ...carData,
-      calculatedPrice,
-      priceHistory: [{
-        price: carData.price,
-        date: new Date(),
-        reason: 'Initial listing'
-      }],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    
-    const result = await collection.insertOne(car);
-    const createdCar = this.formatDocument({ ...car, _id: result.insertedId.toString() });
-    
-    // Log inventory action
-    await this.createInventoryLog({
-      carId: createdCar._id!,
-      dealerId: carData.dealerId,
-      action: 'added',
-      newStatus: carData.inventoryStatus || 'in_stock',
-      notes: 'Car added to inventory',
-      performedBy: carData.dealerId // Assuming dealer creates their own cars
-    });
-    
-    return createdCar;
-  }
-
-  async updateCar(id: string, updates: Partial<InsertCar>): Promise<Car | undefined> {
-    const collection = await this.getCollection<Car>('cars');
-    const currentCar = await this.getCar(id);
-    
-    if (!currentCar) return undefined;
-    
-    // Track price changes
-    const updateData: any = { ...updates, updatedAt: new Date() };
-    
-    if (updates.price && updates.price !== currentCar.price) {
-      updateData.priceHistory = [
-        ...(currentCar.priceHistory || []),
-        {
-          price: updates.price,
-          date: new Date(),
-          reason: 'Price updated'
-        }
-      ];
-      
-      // Log price change
-      await this.createInventoryLog({
-        carId: id,
-        dealerId: currentCar.dealerId,
-        action: 'price_changed',
-        newStatus: currentCar.inventoryStatus,
-        previousPrice: currentCar.price,
-        newPrice: updates.price,
-        notes: 'Price updated',
-        performedBy: currentCar.dealerId
-      });
-    }
-    
-    await collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
-    
-    return this.getCar(id);
-  }
-
-  // Review operations with enhanced features
-  async getReview(id: string): Promise<Review | undefined> {
-    const collection = await this.getCollection<Review>('reviews');
-    const review = await collection.findOne({ _id: new ObjectId(id) });
-    return this.formatDocument(review);
-  }
-
-  async getReviewsByDealer(dealerId: string): Promise<Review[]> {
-    const collection = await this.getCollection<Review>('reviews');
-    const reviews = await collection.find({ dealerId }).sort({ createdAt: -1 }).toArray();
-    return reviews.map(review => this.formatDocument(review));
-  }
-
-  async getReviewsByCar(carId: string): Promise<Review[]> {
-    const collection = await this.getCollection<Review>('reviews');
-    const reviews = await collection.find({ carId }).sort({ createdAt: -1 }).toArray();
-    return reviews.map(review => this.formatDocument(review));
-  }
-
-  async createReview(reviewData: InsertReview): Promise<Review> {
-    const collection = await this.getCollection<Review>('reviews');
-    const review = {
-      ...reviewData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(review);
-    
-    // Update dealer rating if this is a dealer review
-    if (reviewData.dealerId) {
-      const dealerReviews = await this.getReviewsByDealer(reviewData.dealerId);
-      const totalReviews = dealerReviews.length;
-      const averageRating = dealerReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews;
-      await this.updateDealerRating(reviewData.dealerId, averageRating, totalReviews);
-    }
-    
-    return this.formatDocument({ ...review, _id: result.insertedId.toString() });
-  }
-
-  // Favorite operations
-  async getUserFavorites(userId: string): Promise<FavoriteCar[]> {
-    const collection = await this.getCollection<FavoriteCar>('favorites');
-    const favorites = await collection.find({ userId }).sort({ createdAt: -1 }).toArray();
-    return favorites.map(fav => this.formatDocument(fav));
-  }
-
-  async addToFavorites(favoriteData: InsertFavoriteCar): Promise<FavoriteCar> {
-    const collection = await this.getCollection<FavoriteCar>('favorites');
-    
-    // Check if already exists
-    const existing = await collection.findOne({ 
-      userId: favoriteData.userId, 
-      carId: favoriteData.carId 
-    });
-    
-    if (existing) {
-      return this.formatDocument(existing);
-    }
-    
-    const favorite = {
-      ...favoriteData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(favorite);
-    return this.formatDocument({ ...favorite, _id: result.insertedId.toString() });
-  }
-
-  async removeFromFavorites(userId: string, carId: string): Promise<void> {
-    const collection = await this.getCollection<FavoriteCar>('favorites');
-    await collection.deleteOne({ userId, carId });
-  }
-
-  // Inventory management operations
-  async createInventoryLog(logData: InsertInventoryLog): Promise<InventoryLog> {
-    const collection = await this.getCollection<InventoryLog>('inventory_logs');
-    const log = {
-      ...logData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(log);
-    return this.formatDocument({ ...log, _id: result.insertedId.toString() });
-  }
-
-  async getInventoryLogs(dealerId: string): Promise<InventoryLog[]> {
-    const collection = await this.getCollection<InventoryLog>('inventory_logs');
-    const logs = await collection.find({ dealerId }).sort({ createdAt: -1 }).toArray();
-    return logs.map(log => this.formatDocument(log));
-  }
-
-  // Sales operations
-  async createSale(saleData: InsertSale): Promise<Sale> {
-    const collection = await this.getCollection<Sale>('sales');
-    const sale = {
-      ...saleData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(sale);
-    
-    // Update car status to sold
-    await this.updateCar(saleData.carId, {
-      inventoryStatus: 'sold',
-      available: false,
-      soldDate: new Date(),
-      soldPrice: saleData.salePrice
-    });
-    
-    // Log the sale
-    await this.createInventoryLog({
-      carId: saleData.carId,
-      dealerId: saleData.dealerId,
-      action: 'sold',
-      previousStatus: 'in_stock',
-      newStatus: 'sold',
-      notes: `Sold to ${saleData.buyerName} for $${saleData.salePrice}`,
-      performedBy: saleData.dealerId
-    });
-    
-    return this.formatDocument({ ...sale, _id: result.insertedId.toString() });
-  }
-
-  async getSalesByDealer(dealerId: string): Promise<Sale[]> {
-    const collection = await this.getCollection<Sale>('sales');
-    const sales = await collection.find({ dealerId }).sort({ createdAt: -1 }).toArray();
-    return sales.map(sale => this.formatDocument(sale));
-  }
-
-  async updateSale(id: string, updates: Partial<InsertSale>): Promise<Sale | undefined> {
-    const collection = await this.getCollection<Sale>('sales');
-    
-    if (updates.status === 'completed' && !updates.completedAt) {
-      updates.completedAt = new Date();
-    }
-    
-    await collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updates }
-    );
-    
-    const sale = await collection.findOne({ _id: new ObjectId(id) });
-    return this.formatDocument(sale);
-  }
-
-  // Analytics operations
-  async createDealerAnalytics(analyticsData: InsertDealerAnalytics): Promise<DealerAnalytics> {
-    const collection = await this.getCollection<DealerAnalytics>('dealer_analytics');
-    const analytics = {
-      ...analyticsData,
-      createdAt: new Date(),
-    };
-    const result = await collection.insertOne(analytics);
-    return this.formatDocument({ ...analytics, _id: result.insertedId.toString() });
-  }
-
-  async getDealerAnalytics(dealerId: string, period: string): Promise<DealerAnalytics[]> {
-    const collection = await this.getCollection<DealerAnalytics>('dealer_analytics');
-    const analytics = await collection
-      .find({ dealerId, period })
-      .sort({ periodDate: -1 })
-      .toArray();
-    return analytics.map(item => this.formatDocument(item));
-  }
-}
-
-// Initialize and seed the database
-async function initializeDatabase() {
-  const storage = new MongoDBStorage();
-  
-  // Check if we have any data, if not, seed it
-  const existingCars = await storage.getAllCars();
-  if (existingCars.length === 0) {
-    console.log('🌱 Seeding database with initial data...');
-    await seedDatabase(storage);
-  }
-}
-
-async function seedDatabase(storage: MongoDBStorage) {
-  try {
+  private seedData() {
     // Create sample dealers
-    const dealer1 = await storage.createDealer({
-      name: "Premium Auto Group",
-      location: "Downtown Los Angeles, CA",
-      description: "Luxury vehicles and exceptional service since 1995",
-      imageUrl: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800",
-      phone: "(555) 123-4567",
-      email: "contact@premiumauto.com",
-      address: "123 Luxury Ave, Los Angeles, CA 90210",
-      rating: 4.8,
-      reviewCount: 127,
-      verified: true,
-      businessHours: {
-        monday: "9:00 AM - 7:00 PM",
-        tuesday: "9:00 AM - 7:00 PM",
-        wednesday: "9:00 AM - 7:00 PM",
-        thursday: "9:00 AM - 7:00 PM",
-        friday: "9:00 AM - 7:00 PM",
-        saturday: "10:00 AM - 6:00 PM",
-        sunday: "12:00 PM - 5:00 PM"
+    const dealers = [
+      {
+        name: "Premium Auto Group",
+        location: "Downtown, NYC",
+        description: "Luxury and premium vehicles",
+        imageUrl: "https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
+        phone: "(555) 123-4567",
+        email: "contact@premiumauto.com",
+        address: "123 Auto Street, NYC, NY 10001",
+        rating: "4.9",
+        reviewCount: 156,
+        verified: true,
+        userId: null,
       },
-      services: ["Financing", "Trade-ins", "Service & Maintenance", "Extended Warranties"]
+      {
+        name: "Elite Motors",
+        location: "Beverly Hills, CA",
+        description: "Elite luxury vehicle dealer",
+        imageUrl: "https://images.unsplash.com/photo-1562911791-c7a97b729ec5?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
+        phone: "(555) 234-5678",
+        email: "info@elitemotors.com",
+        address: "456 Luxury Ave, Beverly Hills, CA 90210",
+        rating: "4.7",
+        reviewCount: 89,
+        verified: true,
+        userId: null,
+      },
+      {
+        name: "Family Auto Center",
+        location: "Austin, TX",
+        description: "Family-owned dealership serving Austin",
+        imageUrl: "https://images.unsplash.com/photo-1551632436-cbf8dd35adfa?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
+        phone: "(555) 345-6789",
+        email: "sales@familyauto.com",
+        address: "789 Family Blvd, Austin, TX 78701",
+        rating: "4.8",
+        reviewCount: 203,
+        verified: true,
+        userId: null,
+      },
+      {
+        name: "Green Drive Motors",
+        location: "Seattle, WA",
+        description: "Eco-friendly and electric vehicles",
+        imageUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=300",
+        phone: "(555) 456-7890",
+        email: "hello@greendrive.com",
+        address: "321 Green St, Seattle, WA 98101",
+        rating: "4.6",
+        reviewCount: 124,
+        verified: true,
+        userId: null,
+      },
+    ];
+
+    dealers.forEach(dealer => {
+      const id = this.currentDealerId++;
+      this.dealers.set(id, { ...dealer, id, createdAt: new Date() });
     });
 
-    const dealer2 = await storage.createDealer({
-      name: "Elite Motors",
-      location: "Beverly Hills, CA",
-      description: "Your destination for exotic and luxury vehicles",
-      imageUrl: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800",
-      phone: "(555) 987-6543",
-      email: "info@elitemotors.com",
-      address: "456 Rodeo Drive, Beverly Hills, CA 90210",
-      rating: 4.9,
-      reviewCount: 89,
-      verified: true,
-      businessHours: {
-        monday: "10:00 AM - 8:00 PM",
-        tuesday: "10:00 AM - 8:00 PM",
-        wednesday: "10:00 AM - 8:00 PM",
-        thursday: "10:00 AM - 8:00 PM",
-        friday: "10:00 AM - 8:00 PM",
-        saturday: "10:00 AM - 7:00 PM",
-        sunday: "11:00 AM - 6:00 PM"
-      },
-      services: ["Concierge Service", "Custom Orders", "Collector Car Appraisals", "International Shipping"]
-    });
-
-    // Create sample cars with enhanced features
+    // Create sample cars
     const cars = [
       {
         make: "BMW",
         model: "3 Series",
         year: 2023,
-        price: 45000,
-        mileage: 12000,
-        fuelType: "gasoline" as const,
-        transmission: "automatic" as const,
-        bodyType: "sedan" as const,
-        drivetrain: "rwd" as const,
-        engine: "2.0L Turbocharged I4",
+        price: "45900",
+        mileage: 25000,
+        fuelType: "gasoline",
+        transmission: "automatic",
+        bodyType: "sedan",
+        drivetrain: "rwd",
+        engine: "2.0L Turbo",
         horsepower: 255,
         mpgCity: 26,
         mpgHighway: 36,
         safetyRating: 5,
-        color: "Alpine White",
-        vin: "WBA8E9C09NCP12345",
-        condition: "used" as const,
-        features: ["Navigation System", "Heated Seats", "Sunroof", "Premium Audio", "Backup Camera"],
-        imageUrls: [
-          "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=800",
-          "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=800"
-        ],
-        googleDriveImages: [], // Users can add Google Drive links here
-        description: "Immaculate BMW 3 Series with premium features and low mileage. One owner, full service history.",
-        dealerId: dealer1._id!,
+        color: "Red",
+        condition: "certified",
+        features: ["Navigation", "Leather Seats", "Sunroof", "Backup Camera"],
+        imageUrls: ["https://images.unsplash.com/photo-1552519507-da3b142c6e3d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"],
+        description: "Luxury sedan with premium features",
+        dealerId: 1,
         available: true,
-        inventoryStatus: "in_stock" as const,
-        stockQuantity: 1
+      },
+      {
+        make: "Toyota",
+        model: "RAV4",
+        year: 2022,
+        price: "32500",
+        mileage: 18500,
+        fuelType: "hybrid",
+        transmission: "automatic",
+        bodyType: "suv",
+        drivetrain: "awd",
+        engine: "2.5L Hybrid",
+        horsepower: 219,
+        mpgCity: 41,
+        mpgHighway: 38,
+        safetyRating: 5,
+        color: "White",
+        condition: "used",
+        features: ["All-Wheel Drive", "Hybrid Engine", "Safety Sense 2.0"],
+        imageUrls: ["https://images.unsplash.com/photo-1549399542-7e3f8b79c341?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"],
+        description: "Reliable hybrid SUV with excellent fuel economy",
+        dealerId: 3,
+        available: true,
       },
       {
         make: "Tesla",
         model: "Model 3",
-        year: 2022,
-        price: 38000,
-        mileage: 25000,
-        fuelType: "electric" as const,
-        transmission: "automatic" as const,
-        bodyType: "sedan" as const,
-        drivetrain: "rwd" as const,
+        year: 2023,
+        price: "48900",
+        mileage: 12000,
+        fuelType: "electric",
+        transmission: "automatic",
+        bodyType: "sedan",
+        drivetrain: "rwd",
         engine: "Electric Motor",
         horsepower: 283,
-        mpgCity: 134,
-        mpgHighway: 126,
+        mpgCity: 0,
+        mpgHighway: 0,
         safetyRating: 5,
-        color: "Pearl White",
-        vin: "5YJ3E1EA9NF123789",
-        condition: "used" as const,
-        features: ["Autopilot", "Premium Interior", "Glass Roof", "Mobile Connector", "Supercharging"],
-        imageUrls: [
-          "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800",
-          "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800"
-        ],
-        googleDriveImages: [],
-        description: "Clean Tesla Model 3 with Autopilot and premium features. Excellent battery health.",
-        dealerId: dealer2._id!,
+        color: "Silver",
+        condition: "used",
+        features: ["Autopilot", "Supercharging", "Premium Interior"],
+        imageUrls: ["https://images.unsplash.com/photo-1560958089-b8a1929cea89?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"],
+        description: "Electric sedan with cutting-edge technology",
+        dealerId: 4,
         available: true,
-        inventoryStatus: "in_stock" as const,
-        stockQuantity: 1
       },
       {
-        make: "Mercedes-Benz",
-        model: "C-Class",
+        make: "Honda",
+        model: "Civic",
+        year: 2023,
+        price: "24900",
+        mileage: 8200,
+        fuelType: "gasoline",
+        transmission: "manual",
+        bodyType: "sedan",
+        drivetrain: "fwd",
+        engine: "2.0L VTEC",
+        horsepower: 158,
+        mpgCity: 28,
+        mpgHighway: 37,
+        safetyRating: 5,
+        color: "Blue",
+        condition: "new",
+        features: ["Honda Sensing", "Manual Transmission", "Sport Mode"],
+        imageUrls: ["https://images.unsplash.com/photo-1502877338535-766e1452684a?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"],
+        description: "Sporty compact sedan with manual transmission",
+        dealerId: 3,
+        available: true,
+      },
+      {
+        make: "Ford",
+        model: "F-150",
         year: 2022,
-        price: 52000,
-        mileage: 18000,
-        fuelType: "gasoline" as const,
-        transmission: "automatic" as const,
-        bodyType: "sedan" as const,
-        drivetrain: "rwd" as const,
-        engine: "2.0L Turbocharged I4",
-        horsepower: 255,
-        mpgCity: 23,
+        price: "42700",
+        mileage: 35000,
+        fuelType: "gasoline",
+        transmission: "automatic",
+        bodyType: "pickup",
+        drivetrain: "4wd",
+        engine: "3.5L V6",
+        horsepower: 400,
+        mpgCity: 20,
+        mpgHighway: 24,
+        safetyRating: 4,
+        color: "Black",
+        condition: "used",
+        features: ["4WD", "Towing Package", "Bed Liner"],
+        imageUrls: ["https://images.unsplash.com/photo-1615906344345-10c5bbca7b65?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"],
+        description: "Powerful pickup truck for work and play",
+        dealerId: 1,
+        available: true,
+      },
+      {
+        make: "Audi",
+        model: "A5 Convertible",
+        year: 2023,
+        price: "54200",
+        mileage: 15600,
+        fuelType: "gasoline",
+        transmission: "automatic",
+        bodyType: "convertible",
+        drivetrain: "awd",
+        engine: "2.0L TFSI",
+        horsepower: 261,
+        mpgCity: 24,
         mpgHighway: 34,
         safetyRating: 5,
-        color: "Obsidian Black",
-        vin: "WDD2H8EB0NCF67890",
-        condition: "certified" as const,
-        features: ["MBUX Infotainment", "LED Headlights", "Wireless Charging", "Ambient Lighting", "Sport Package"],
-        imageUrls: [
-          "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800",
-          "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=800"
-        ],
-        googleDriveImages: [],
-        description: "Certified Pre-Owned Mercedes-Benz C-Class with advanced technology and luxury appointments.",
-        dealerId: dealer1._id!,
+        color: "White",
+        condition: "certified",
+        features: ["Quattro AWD", "Virtual Cockpit", "Bang & Olufsen Audio"],
+        imageUrls: ["https://images.unsplash.com/photo-1502920917128-1aa500764cbd?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600"],
+        description: "Luxury convertible with premium amenities",
+        dealerId: 2,
         available: true,
-        inventoryStatus: "in_stock" as const,
-        stockQuantity: 1
-      }
+      },
     ];
 
-    for (const carData of cars) {
-      await storage.createCar(carData);
-    }
+    cars.forEach(car => {
+      const id = this.currentCarId++;
+      this.cars.set(id, { ...car, id, createdAt: new Date() });
+    });
+  }
 
-    console.log('✅ Database seeded successfully!');
-  } catch (error) {
-    console.error('❌ Error seeding database:', error);
+  // User operations
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.username === username);
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.email === email);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const id = this.currentUserId++;
+    const user: User = { ...insertUser, id, createdAt: new Date() };
+    this.users.set(id, user);
+    return user;
+  }
+
+  // Dealer operations
+  async getDealer(id: number): Promise<Dealer | undefined> {
+    return this.dealers.get(id);
+  }
+
+  async getAllDealers(): Promise<Dealer[]> {
+    return Array.from(this.dealers.values());
+  }
+
+  async getDealersByLocation(location: string): Promise<Dealer[]> {
+    return Array.from(this.dealers.values()).filter(dealer => 
+      dealer.location.toLowerCase().includes(location.toLowerCase())
+    );
+  }
+
+  async createDealer(insertDealer: InsertDealer): Promise<Dealer> {
+    const id = this.currentDealerId++;
+    const dealer: Dealer = { ...insertDealer, id, createdAt: new Date() };
+    this.dealers.set(id, dealer);
+    return dealer;
+  }
+
+  async updateDealerRating(id: number, rating: number, reviewCount: number): Promise<void> {
+    const dealer = this.dealers.get(id);
+    if (dealer) {
+      dealer.rating = rating.toString();
+      dealer.reviewCount = reviewCount;
+    }
+  }
+
+  // Car operations
+  async getCar(id: number): Promise<Car | undefined> {
+    return this.cars.get(id);
+  }
+
+  async getAllCars(): Promise<Car[]> {
+    return Array.from(this.cars.values()).filter(car => car.available);
+  }
+
+  async getCarsByDealer(dealerId: number): Promise<Car[]> {
+    return Array.from(this.cars.values()).filter(car => car.dealerId === dealerId && car.available);
+  }
+
+  async searchCars(filters: {
+    make?: string;
+    model?: string;
+    minPrice?: number;
+    maxPrice?: number;
+    minYear?: number;
+    maxYear?: number;
+    fuelType?: string;
+    transmission?: string;
+    bodyType?: string;
+    maxMileage?: number;
+  }): Promise<Car[]> {
+    return Array.from(this.cars.values()).filter(car => {
+      if (!car.available) return false;
+      
+      if (filters.make && car.make.toLowerCase() !== filters.make.toLowerCase()) return false;
+      if (filters.model && car.model.toLowerCase() !== filters.model.toLowerCase()) return false;
+      if (filters.minPrice && parseFloat(car.price) < filters.minPrice) return false;
+      if (filters.maxPrice && parseFloat(car.price) > filters.maxPrice) return false;
+      if (filters.minYear && car.year < filters.minYear) return false;
+      if (filters.maxYear && car.year > filters.maxYear) return false;
+      if (filters.fuelType && car.fuelType !== filters.fuelType) return false;
+      if (filters.transmission && car.transmission !== filters.transmission) return false;
+      if (filters.bodyType && car.bodyType !== filters.bodyType) return false;
+      if (filters.maxMileage && car.mileage > filters.maxMileage) return false;
+      
+      return true;
+    });
+  }
+
+  async getFeaturedCars(): Promise<Car[]> {
+    return Array.from(this.cars.values())
+      .filter(car => car.available)
+      .slice(0, 6);
+  }
+
+  async createCar(insertCar: InsertCar): Promise<Car> {
+    const id = this.currentCarId++;
+    const car: Car = { ...insertCar, id, createdAt: new Date() };
+    this.cars.set(id, car);
+    return car;
+  }
+
+  async updateCar(id: number, updates: Partial<InsertCar>): Promise<Car | undefined> {
+    const car = this.cars.get(id);
+    if (car) {
+      Object.assign(car, updates);
+      return car;
+    }
+    return undefined;
+  }
+
+  // Review operations
+  async getReview(id: number): Promise<Review | undefined> {
+    return this.reviews.get(id);
+  }
+
+  async getReviewsByDealer(dealerId: number): Promise<Review[]> {
+    return Array.from(this.reviews.values()).filter(review => review.dealerId === dealerId);
+  }
+
+  async getReviewsByCar(carId: number): Promise<Review[]> {
+    return Array.from(this.reviews.values()).filter(review => review.carId === carId);
+  }
+
+  async createReview(insertReview: InsertReview): Promise<Review> {
+    const id = this.currentReviewId++;
+    const review: Review = { ...insertReview, id, createdAt: new Date() };
+    this.reviews.set(id, review);
+    return review;
+  }
+
+  // Favorite operations
+  async getUserFavorites(userId: number): Promise<FavoriteCar[]> {
+    return Array.from(this.favorites.values()).filter(favorite => favorite.userId === userId);
+  }
+
+  async addToFavorites(insertFavorite: InsertFavoriteCar): Promise<FavoriteCar> {
+    const id = this.currentFavoriteId++;
+    const favorite: FavoriteCar = { ...insertFavorite, id, createdAt: new Date() };
+    this.favorites.set(id, favorite);
+    return favorite;
+  }
+
+  async removeFromFavorites(userId: number, carId: number): Promise<void> {
+    const favorite = Array.from(this.favorites.entries()).find(
+      ([_, fav]) => fav.userId === userId && fav.carId === carId
+    );
+    if (favorite) {
+      this.favorites.delete(favorite[0]);
+    }
   }
 }
 
-export const storage = new MongoDBStorage();
-
-// Initialize database on module import
-initializeDatabase().catch(console.error);
+export const storage = new MemStorage();

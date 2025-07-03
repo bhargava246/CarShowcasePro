@@ -69,20 +69,9 @@ export default function CarDetail() {
           <CardContent className="p-0">
             <div className="relative">
               <img 
-                src={
-                  car.googleDriveImages?.[0] || 
-                  car.imageUrls?.[0] || 
-                  "/placeholder-car.jpg"
-                } 
+                src={car.imageUrls?.[0] || "/placeholder-car.jpg"} 
                 alt={`${car.year} ${car.make} ${car.model}`}
                 className="w-full h-96 object-cover rounded-t-lg" 
-                onError={(e) => {
-                  if (car.googleDriveImages?.[0] && e.currentTarget.src === car.googleDriveImages[0]) {
-                    e.currentTarget.src = car.imageUrls?.[0] || "/placeholder-car.jpg";
-                  } else if (car.imageUrls?.[0] && e.currentTarget.src === car.imageUrls[0]) {
-                    e.currentTarget.src = "/placeholder-car.jpg";
-                  }
-                }}
               />
               <div className="absolute top-4 right-4 flex space-x-2">
                 <Button variant="secondary" size="icon" className="bg-white/80 hover:bg-white">
@@ -92,10 +81,10 @@ export default function CarDetail() {
                   <Share2 className="h-4 w-4" />
                 </Button>
               </div>
-              {((car.googleDriveImages?.length || 0) + (car.imageUrls?.length || 0)) > 1 && (
+              {car.imageUrls && car.imageUrls.length > 1 && (
                 <div className="absolute bottom-4 left-4">
                   <Badge className="bg-black/50 text-white">
-                    1 of {(car.googleDriveImages?.length || 0) + (car.imageUrls?.length || 0)} photos
+                    1 of {car.imageUrls.length} photos
                   </Badge>
                 </div>
               )}
