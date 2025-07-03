@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Star, Heart, Share2, MessageCircle, MapPin, Calendar, Gauge, Fuel, Settings, Shield } from "lucide-react";
 import { formatPrice, formatMileage, capitalizeFirst } from "@/lib/utils";
+import FinanceCalculator from "@/components/FinanceCalculator";
 import type { Car, Dealer } from "@shared/schema";
 
 export default function CarDetail() {
@@ -330,42 +331,7 @@ export default function CarDetail() {
             )}
 
             {/* Financing Calculator */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Financing Calculator</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Loan Amount</label>
-                    <input 
-                      type="text" 
-                      value={formatPrice(car.price)}
-                      className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50" 
-                      readOnly
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Down Payment</label>
-                    <input 
-                      type="text" 
-                      placeholder="$5,000"
-                      className="w-full p-3 border border-gray-300 rounded-lg" 
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Loan Term</label>
-                    <select className="w-full p-3 border border-gray-300 rounded-lg">
-                      <option>36 months</option>
-                      <option>48 months</option>
-                      <option>60 months</option>
-                      <option>72 months</option>
-                    </select>
-                  </div>
-                  <Button variant="outline" className="w-full">
-                    Calculate Payment
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <FinanceCalculator carPrice={car.price} />
 
             {/* Safety Features */}
             <Card>
