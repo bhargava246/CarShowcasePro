@@ -160,9 +160,11 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
           
           <Button 
             onClick={calculateFinancing}
-            className="w-full bg-carstore-orange text-white hover:bg-carstore-orange-dark"
+            className="w-full bg-carstore-orange text-white hover:bg-carstore-orange-dark py-3 text-lg font-semibold mt-4 mb-4 shadow-lg"
+            size="lg"
           >
-            Calculate
+            <Calculator className="mr-2 h-5 w-5" />
+            Calculate EMI
           </Button>
           
           
