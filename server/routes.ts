@@ -39,9 +39,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxMileage: req.query.maxMileage ? parseInt(req.query.maxMileage as string) : undefined,
       };
 
-      // Remove undefined values
+      // Remove undefined values and "all" values
       Object.keys(filters).forEach(key => {
-        if (filters[key as keyof typeof filters] === undefined) {
+        const value = filters[key as keyof typeof filters];
+        if (value === undefined || value === "" || value === "all") {
           delete filters[key as keyof typeof filters];
         }
       });
@@ -49,6 +50,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const cars = await storage.searchCars(filters);
       res.json(cars);
     } catch (error) {
+      console.error("Search error:", error);
       res.status(500).json({ message: "Failed to search cars" });
     }
   });
@@ -159,11 +161,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Favorites routes
+  app.get("/api/favorites/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const favorites = await storage.getUserFavorites(userId);
+      res.json(favorites);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
+  app.post("/api/favorites", async (req, res) => {
+    try {
+      const favoriteData = {
+        userId: parseInt(req.body.userId),
+        carId: parseInt(req.body.carId)
+      };
+      const favorite = await storage.addToFavorites(favoriteData);
+      res.status(201).json(favorite);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to add to favorites" });
+    }
+  });
+
+  app.delete("/api/favorites/:userId/:carId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const carId = parseInt(req.params.carId);
+      await storage.removeFromFavorites(userId, carId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Failed to remove from favorites" });
+    }
+  });
+
   // Utility routes
   app.get("/api/makes", async (req, res) => {
     try {
       const cars = await storage.getAllCars();
-      const makes = [...new Set(cars.map(car => car.make))].sort();
+      const makes = Array.from(new Set(cars.map(car => car.make))).sort();
       res.json(makes);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch makes" });
@@ -174,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const make = req.params.make;
       const cars = await storage.getAllCars();
-      const models = [...new Set(cars.filter(car => car.make === make).map(car => car.model))].sort();
+      const models = Array.from(new Set(cars.filter(car => car.make === make).map(car => car.model))).sort();
       res.json(models);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch models" });

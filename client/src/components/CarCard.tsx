@@ -1,16 +1,64 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Star, Heart } from "lucide-react";
 import { Link } from "wouter";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { formatPrice, formatMileage, capitalizeFirst } from "@/lib/utils";
-import type { Car } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import type { Car, FavoriteCar } from "@shared/schema";
 
 interface CarCardProps {
   car: Car;
 }
 
 export default function CarCard({ car }: CarCardProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const userId = 1; // Mock user ID for now
+
+  const { data: favorites } = useQuery<FavoriteCar[]>({
+    queryKey: [`/api/favorites/${userId}`],
+  });
+
+  const isInWishlist = favorites?.some(fav => fav.carId === car.id) || false;
+
+  const toggleWishlistMutation = useMutation({
+    mutationFn: async () => {
+      if (isInWishlist) {
+        return await fetch(`/api/favorites/${userId}/${car.id}`, {
+          method: "DELETE",
+        });
+      } else {
+        return await fetch(`/api/favorites`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            carId: car.id,
+          }),
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/favorites/${userId}`] });
+      toast({
+        title: "Success",
+        description: isInWishlist ? "Removed from wishlist" : "Added to wishlist",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update wishlist",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getBadgeVariant = (condition: string) => {
     switch (condition) {
       case "new": return "bg-purple-100 text-purple-800";
@@ -41,8 +89,10 @@ export default function CarCard({ car }: CarCardProps) {
           variant="ghost"
           size="icon"
           className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+          onClick={() => toggleWishlistMutation.mutate()}
+          disabled={toggleWishlistMutation.isPending}
         >
-          <Heart className="h-4 w-4" />
+          <Heart className={`h-4 w-4 ${isInWishlist ? "fill-red-500 text-red-500" : ""}`} />
         </Button>
       </div>
       

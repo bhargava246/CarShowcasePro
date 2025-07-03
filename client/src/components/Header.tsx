@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { User, ShoppingCart, Menu } from "lucide-react";
+import { User, Heart, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function Header() {
@@ -40,11 +40,13 @@ export default function Header() {
           </nav>
           
           <div className="flex items-center space-x-4">
+            <Link href="/wishlist">
+              <Button variant="ghost" size="icon" className="text-white hover:text-orange-400">
+                <Heart className="h-5 w-5" />
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" className="text-white hover:text-orange-400">
               <User className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:text-orange-400">
-              <ShoppingCart className="h-5 w-5" />
             </Button>
             
             {/* Mobile menu */}

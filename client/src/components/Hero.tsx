@@ -53,7 +53,7 @@ export default function Hero() {
           </div>
           
           {/* Search bar */}
-          <div className="relative bg-white rounded-lg p-2 max-w-md">
+          <div className="relative bg-white rounded-lg p-2 max-w-md mb-8">
             <div className="flex items-center">
               <Input
                 type="text"
@@ -68,6 +68,37 @@ export default function Hero() {
                 className="bg-orange-500 hover:bg-orange-600 text-white p-2 rounded-md transition-colors"
               >
                 <Search className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Instant Estimate Card */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 max-w-md border border-white/20">
+            <h3 className="text-xl font-semibold text-white mb-4">Get Instant Estimate</h3>
+            <p className="text-gray-200 text-sm mb-4">
+              Enter your car details to get a quick estimate of its market value
+            </p>
+            <div className="space-y-3">
+              <div className="flex space-x-2">
+                <Input 
+                  placeholder="Year (e.g., 2020)" 
+                  className="bg-white/20 border-white/30 text-white placeholder-gray-300"
+                />
+                <Input 
+                  placeholder="Make (e.g., BMW)" 
+                  className="bg-white/20 border-white/30 text-white placeholder-gray-300"
+                />
+              </div>
+              <Input 
+                placeholder="Model (e.g., 3 Series)" 
+                className="bg-white/20 border-white/30 text-white placeholder-gray-300"
+              />
+              <Input 
+                placeholder="Mileage (e.g., 50,000)" 
+                className="bg-white/20 border-white/30 text-white placeholder-gray-300"
+              />
+              <button className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-md transition-colors font-medium">
+                Get My Estimate
               </button>
             </div>
           </div>
