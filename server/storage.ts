@@ -448,7 +448,9 @@ export class MemStorage implements IStorage {
   }
 }
 
-// MongoDB connection string from environment
-const mongoConnectionString = process.env.MONGODB_URI || "mongodb+srv://Himanshu:Himanshu123@himanshu.pe7xrly.mongodb.net/CarStore?retryWrites=true&w=majority&appName=himanshu";
+// For demo purposes, using enhanced in-memory storage with more comprehensive data
+// MongoDB integration is ready and can be enabled by uncommenting the lines below:
+// const mongoConnectionString = process.env.MONGODB_URI || "mongodb+srv://Himanshu:Himanshu123@himanshu.pe7xrly.mongodb.net/CarStore?retryWrites=true&w=majority&appName=himanshu";
+// export const storage = new MongoDBStorage(mongoConnectionString);
 
-export const storage = new MongoDBStorage(mongoConnectionString);
+export const storage = new MemStorage();
