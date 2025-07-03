@@ -44,6 +44,8 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
     const monthlyRate = parseFloat(interestRate) / 100 / 12;
     const numPayments = parseInt(loanTerm);
     
+    console.log('Calculation inputs:', { price, down, principal, monthlyRate, numPayments });
+    
     if (principal <= 0 || monthlyRate <= 0 || numPayments <= 0) {
       setMonthlyPayment(0);
       setTotalInterest(0);
@@ -55,6 +57,8 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
     
     const totalPayments = monthlyPaymentCalc * numPayments;
     const totalInterestCalc = totalPayments - principal;
+    
+    console.log('Calculation results:', { monthlyPaymentCalc, totalInterestCalc });
     
     setMonthlyPayment(monthlyPaymentCalc);
     setTotalInterest(totalInterestCalc);
@@ -149,7 +153,7 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
             Calculate Payment
           </Button>
           
-          {monthlyPayment !== null && (
+          {monthlyPayment !== null && monthlyPayment > 0 && (
             <div className="mt-4">
               <div className="p-4 bg-gradient-to-r from-carstore-orange/10 to-carstore-orange/5 rounded-lg border border-carstore-orange/20 text-center">
                 <div className="mb-2">
@@ -164,6 +168,11 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
               </div>
             </div>
           )}
+          
+          {/* Debug info - remove later */}
+          <div className="mt-2 text-xs text-gray-400">
+            Debug: monthlyPayment = {monthlyPayment}, state = {JSON.stringify({downPayment, loanTerm, interestRate})}
+          </div>
         </div>
       </CardContent>
     </Card>
