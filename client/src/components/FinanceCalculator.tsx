@@ -38,17 +38,32 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
 
   // Finance calculation function
   const calculateFinancing = () => {
-    const price = parseFloat(carPrice.toString());
-    const down = parseFloat(downPayment) || 0;
+    // Clean the price string to handle formatted prices like "$48,900"
+    const priceStr = carPrice.toString().replace(/[$,]/g, '');
+    const price = parseFloat(priceStr);
+    const down = parseFloat(downPayment.replace(/[$,]/g, '')) || 0;
     const principal = price - down;
     const monthlyRate = parseFloat(interestRate) / 100 / 12;
     const numPayments = parseInt(loanTerm);
     
-    console.log('Calculation inputs:', { price, down, principal, monthlyRate, numPayments });
+    console.log('Calculation inputs:', { 
+      carPrice: carPrice.toString(), 
+      priceStr, 
+      price, 
+      downPayment, 
+      down, 
+      principal, 
+      monthlyRate, 
+      numPayments 
+    });
     
-    if (principal <= 0 || monthlyRate <= 0 || numPayments <= 0) {
-      setMonthlyPayment(0);
-      setTotalInterest(0);
+    if (principal <= 0) {
+      alert('Principal amount must be greater than 0. Please check your down payment.');
+      return;
+    }
+    
+    if (monthlyRate <= 0 || numPayments <= 0) {
+      alert('Interest rate and loan term must be greater than 0.');
       return;
     }
     
@@ -153,26 +168,33 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
             Calculate Payment
           </Button>
           
-          {monthlyPayment !== null && monthlyPayment > 0 && (
-            <div className="mt-4">
-              <div className="p-4 bg-gradient-to-r from-carstore-orange/10 to-carstore-orange/5 rounded-lg border border-carstore-orange/20 text-center">
+          
+          {/* Debug info */}
+          <div className="mt-2 text-xs text-gray-400 p-2 bg-gray-50 rounded">
+            Debug: monthlyPayment = {monthlyPayment}, carPrice = {carPrice}
+          </div>
+          
+          {/* EMI Result - Always show if calculated */}
+          {monthlyPayment !== null && (
+            <div className="mt-4 border-2 border-carstore-orange rounded-lg">
+              <div className="p-6 bg-gradient-to-r from-carstore-orange/10 to-carstore-orange/5 text-center">
                 <div className="mb-2">
-                  <span className="text-sm text-gray-600">Monthly EMI</span>
+                  <span className="text-sm font-medium text-gray-700">Monthly EMI</span>
                 </div>
-                <div className="text-3xl font-bold text-carstore-orange">
-                  ${monthlyPayment.toFixed(2)}
+                <div className="text-4xl font-bold text-carstore-orange mb-2">
+                  ${monthlyPayment > 0 ? monthlyPayment.toFixed(2) : '0.00'}
                 </div>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-600">
                   per month for {loanTerm} months
                 </p>
+                {monthlyPayment <= 0 && (
+                  <p className="text-xs text-red-500 mt-2">
+                    Check your inputs - calculation resulted in $0
+                  </p>
+                )}
               </div>
             </div>
           )}
-          
-          {/* Debug info - remove later */}
-          <div className="mt-2 text-xs text-gray-400">
-            Debug: monthlyPayment = {monthlyPayment}, state = {JSON.stringify({downPayment, loanTerm, interestRate})}
-          </div>
         </div>
       </CardContent>
     </Card>
