@@ -78,65 +78,76 @@ export default function CarCard({ car }: CarCardProps) {
   };
 
   return (
-    <Card className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
-      <div className="relative">
-        <img 
-          src={car.imageUrls?.[0] || "/placeholder-car.jpg"} 
-          alt={`${car.year} ${car.make} ${car.model}`}
-          className="w-full h-48 object-cover" 
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-2 right-2 bg-white/80 hover:bg-white"
-          onClick={() => toggleWishlistMutation.mutate()}
-          disabled={toggleWishlistMutation.isPending}
-        >
-          <Heart className={`h-4 w-4 ${isInWishlist ? "fill-red-500 text-red-500" : ""}`} />
-        </Button>
-      </div>
-      
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {car.year} {car.make} {car.model}
-          </h3>
-          <Badge className={getBadgeVariant(car.condition)}>
-            {getBadgeLabel(car.condition)}
-          </Badge>
+    <Link href={`/cars/${car.id}`}>
+      <Card className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+        <div className="relative">
+          <img 
+            src={car.imageUrls?.[0] || "/placeholder-car.jpg"} 
+            alt={`${car.year} ${car.make} ${car.model}`}
+            className="w-full h-48 object-cover" 
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-2 right-2 bg-white/80 hover:bg-white z-10"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              toggleWishlistMutation.mutate();
+            }}
+            disabled={toggleWishlistMutation.isPending}
+          >
+            <Heart className={`h-4 w-4 ${isInWishlist ? "fill-red-500 text-red-500" : ""}`} />
+          </Button>
         </div>
         
-        <p className="text-gray-600 text-sm mb-3">
-          {capitalizeFirst(car.bodyType)} • {formatMileage(car.mileage)} miles • {capitalizeFirst(car.transmission)} • {capitalizeFirst(car.drivetrain.toUpperCase())}
-        </p>
-        
-        <div className="flex items-center mb-3">
-          <div className="flex text-yellow-400">
-            {Array.from({ length: 5 }, (_, i) => (
-              <Star
-                key={i}
-                className={`h-4 w-4 ${
-                  i < (car.safetyRating || 0) ? "fill-current" : ""
-                }`}
-              />
-            ))}
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {car.year} {car.make} {car.model}
+            </h3>
+            <Badge className={getBadgeVariant(car.condition)}>
+              {getBadgeLabel(car.condition)}
+            </Badge>
           </div>
-          <span className="text-gray-600 text-sm ml-2">
-            {car.safetyRating || 0} (Safety Rating)
-          </span>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-carstore-orange">
-            {formatPrice(car.price)}
-          </span>
-          <Link href={`/cars/${car.id}`}>
-            <Button className="bg-carstore-orange text-white hover:bg-carstore-orange-dark transition-colors">
+          
+          <p className="text-gray-600 text-sm mb-3">
+            {capitalizeFirst(car.bodyType)} • {formatMileage(car.mileage)} miles • {capitalizeFirst(car.transmission)} • {capitalizeFirst(car.drivetrain.toUpperCase())}
+          </p>
+          
+          <div className="flex items-center mb-3">
+            <div className="flex text-yellow-400">
+              {Array.from({ length: 5 }, (_, i) => (
+                <Star
+                  key={i}
+                  className={`h-4 w-4 ${
+                    i < (car.safetyRating || 0) ? "fill-current" : ""
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-gray-600 text-sm ml-2">
+              {car.safetyRating || 0} (Safety Rating)
+            </span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-2xl font-bold text-carstore-orange">
+              {formatPrice(car.price)}
+            </span>
+            <Button 
+              className="bg-carstore-orange text-white hover:bg-carstore-orange-dark transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // The link will handle navigation
+              }}
+            >
               View Details
             </Button>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
