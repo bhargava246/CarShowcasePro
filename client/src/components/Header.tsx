@@ -9,7 +9,9 @@ export default function Header() {
   const navItems = [
     { href: "/", label: "Home", active: location === "/" },
     { href: "/search", label: "Collection", active: location.startsWith("/search") || location.startsWith("/cars") },
-    { href: "/dealers", label: "Contact", active: location.startsWith("/dealers") },
+    { href: "/dealers", label: "Dealers", active: location.startsWith("/dealers") },
+    { href: "/inventory", label: "Inventory", active: location.startsWith("/inventory") },
+    { href: "/dashboard", label: "Dashboard", active: location.startsWith("/dashboard") },
   ];
 
   return (

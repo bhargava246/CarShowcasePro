@@ -1,23 +1,29 @@
-import { users, dealers, cars, reviews, favoriteCars, type User, type Dealer, type Car, type Review, type FavoriteCar, type InsertUser, type InsertDealer, type InsertCar, type InsertReview, type InsertFavoriteCar } from "@shared/schema";
+import { 
+  type User, type Dealer, type Car, type Review, type FavoriteCar,
+  type InsertUser, type InsertDealer, type InsertCar, type InsertReview, type InsertFavoriteCar,
+  type InventoryLog, type InsertInventoryLog, type Sale, type InsertSale,
+  type DealerAnalytics, type InsertDealerAnalytics
+} from "@shared/schema";
+import { MongoDBStorage } from "./mongodb";
 
 export interface IStorage {
   // User operations
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   
   // Dealer operations
-  getDealer(id: number): Promise<Dealer | undefined>;
+  getDealer(id: string): Promise<Dealer | undefined>;
   getAllDealers(): Promise<Dealer[]>;
   getDealersByLocation(location: string): Promise<Dealer[]>;
   createDealer(dealer: InsertDealer): Promise<Dealer>;
-  updateDealerRating(id: number, rating: number, reviewCount: number): Promise<void>;
+  updateDealerRating(id: string, rating: number, reviewCount: number): Promise<void>;
   
   // Car operations
-  getCar(id: number): Promise<Car | undefined>;
+  getCar(id: string): Promise<Car | undefined>;
   getAllCars(): Promise<Car[]>;
-  getCarsByDealer(dealerId: number): Promise<Car[]>;
+  getCarsByDealer(dealerId: string): Promise<Car[]>;
   searchCars(filters: {
     make?: string;
     model?: string;
@@ -32,18 +38,31 @@ export interface IStorage {
   }): Promise<Car[]>;
   getFeaturedCars(): Promise<Car[]>;
   createCar(car: InsertCar): Promise<Car>;
-  updateCar(id: number, updates: Partial<InsertCar>): Promise<Car | undefined>;
+  updateCar(id: string, updates: Partial<InsertCar>): Promise<Car | undefined>;
   
   // Review operations
-  getReview(id: number): Promise<Review | undefined>;
-  getReviewsByDealer(dealerId: number): Promise<Review[]>;
-  getReviewsByCar(carId: number): Promise<Review[]>;
+  getReview(id: string): Promise<Review | undefined>;
+  getReviewsByDealer(dealerId: string): Promise<Review[]>;
+  getReviewsByCar(carId: string): Promise<Review[]>;
   createReview(review: InsertReview): Promise<Review>;
   
   // Favorite operations
-  getUserFavorites(userId: number): Promise<FavoriteCar[]>;
+  getUserFavorites(userId: string): Promise<FavoriteCar[]>;
   addToFavorites(favorite: InsertFavoriteCar): Promise<FavoriteCar>;
-  removeFromFavorites(userId: number, carId: number): Promise<void>;
+  removeFromFavorites(userId: string, carId: string): Promise<void>;
+  
+  // Inventory Management operations
+  createInventoryLog(log: InsertInventoryLog): Promise<InventoryLog>;
+  getInventoryLogs(dealerId: string): Promise<InventoryLog[]>;
+  
+  // Sales operations
+  createSale(sale: InsertSale): Promise<Sale>;
+  getSalesByDealer(dealerId: string): Promise<Sale[]>;
+  updateSale(id: string, updates: Partial<InsertSale>): Promise<Sale | undefined>;
+  
+  // Analytics operations
+  createDealerAnalytics(analytics: InsertDealerAnalytics): Promise<DealerAnalytics>;
+  getDealerAnalytics(dealerId: string, period: string): Promise<DealerAnalytics[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -429,4 +448,7 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// MongoDB connection string from environment
+const mongoConnectionString = process.env.MONGODB_URI || "mongodb+srv://Himanshu:Himanshu123@himanshu.pe7xrly.mongodb.net/CarStore?retryWrites=true&w=majority&appName=himanshu";
+
+export const storage = new MongoDBStorage(mongoConnectionString);
