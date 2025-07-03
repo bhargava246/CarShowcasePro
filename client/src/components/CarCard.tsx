@@ -33,9 +33,21 @@ export default function CarCard({ car }: CarCardProps) {
     <Card className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300">
       <div className="relative">
         <img 
-          src={car.imageUrls?.[0] || "/placeholder-car.jpg"} 
+          src={
+            car.googleDriveImages?.[0] || 
+            car.imageUrls?.[0] || 
+            "/placeholder-car.jpg"
+          } 
           alt={`${car.year} ${car.make} ${car.model}`}
           className="w-full h-48 object-cover" 
+          onError={(e) => {
+            // If Google Drive image fails, try regular image URL
+            if (car.googleDriveImages?.[0] && e.currentTarget.src === car.googleDriveImages[0]) {
+              e.currentTarget.src = car.imageUrls?.[0] || "/placeholder-car.jpg";
+            } else if (car.imageUrls?.[0] && e.currentTarget.src === car.imageUrls[0]) {
+              e.currentTarget.src = "/placeholder-car.jpg";
+            }
+          }}
         />
         <Button
           variant="ghost"
@@ -44,6 +56,11 @@ export default function CarCard({ car }: CarCardProps) {
         >
           <Heart className="h-4 w-4" />
         </Button>
+        {car.googleDriveImages && car.googleDriveImages.length > 0 && (
+          <div className="absolute bottom-2 left-2 bg-black/60 text-white px-2 py-1 rounded text-xs">
+            {car.googleDriveImages.length + (car.imageUrls?.length || 0)} photos
+          </div>
+        )}
       </div>
       
       <CardContent className="p-6">

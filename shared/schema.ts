@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-// MongoDB Schema Types
+// MongoDB Schema Types with proper ObjectId handling
 
 // User Schema
 export const UserSchema = z.object({
@@ -47,7 +47,7 @@ export const insertDealerSchema = DealerSchema.omit({ _id: true, createdAt: true
 export type Dealer = z.infer<typeof DealerSchema>;
 export type InsertDealer = z.infer<typeof insertDealerSchema>;
 
-// Car Schema with Inventory Management
+// Car Schema with Enhanced Features
 export const CarSchema = z.object({
   _id: z.string().optional(),
   make: z.string().min(1),
@@ -68,7 +68,11 @@ export const CarSchema = z.object({
   vin: z.string().optional(),
   condition: z.enum(["new", "used", "certified"]).default("used"),
   features: z.array(z.string()).default([]),
+  
+  // Enhanced Image Support - Regular URLs and Google Drive
   imageUrls: z.array(z.string().url()).default([]),
+  googleDriveImages: z.array(z.string()).default([]), // Store Google Drive share links
+  
   description: z.string().optional(),
   dealerId: z.string(),
   available: z.boolean().default(true),
@@ -80,6 +84,14 @@ export const CarSchema = z.object({
   reservedUntil: z.date().optional(),
   soldDate: z.date().optional(),
   soldPrice: z.number().min(0).optional(),
+  
+  // Pricing and Calculations
+  calculatedPrice: z.number().optional(), // Auto-calculated fair market price
+  priceHistory: z.array(z.object({
+    price: z.number(),
+    date: z.date(),
+    reason: z.string().optional()
+  })).default([]),
   
   createdAt: z.date().default(() => new Date()),
   updatedAt: z.date().default(() => new Date()),
@@ -99,6 +111,9 @@ export const ReviewSchema = z.object({
   comment: z.string().optional(),
   verified: z.boolean().default(false),
   helpful: z.number().default(0),
+  pros: z.array(z.string()).default([]),
+  cons: z.array(z.string()).default([]),
+  wouldRecommend: z.boolean().optional(),
   createdAt: z.date().default(() => new Date()),
 });
 
@@ -123,9 +138,11 @@ export const InventoryLogSchema = z.object({
   _id: z.string().optional(),
   carId: z.string(),
   dealerId: z.string(),
-  action: z.enum(["added", "updated", "reserved", "sold", "returned", "removed"]),
+  action: z.enum(["added", "updated", "reserved", "sold", "returned", "removed", "price_changed"]),
   previousStatus: z.string().optional(),
   newStatus: z.string(),
+  previousPrice: z.number().optional(),
+  newPrice: z.number().optional(),
   notes: z.string().optional(),
   performedBy: z.string(),
   createdAt: z.date().default(() => new Date()),
@@ -187,3 +204,147 @@ export const DealerAnalyticsSchema = z.object({
 export const insertDealerAnalyticsSchema = DealerAnalyticsSchema.omit({ _id: true, createdAt: true });
 export type DealerAnalytics = z.infer<typeof DealerAnalyticsSchema>;
 export type InsertDealerAnalytics = z.infer<typeof insertDealerAnalyticsSchema>;
+
+// Utility Functions for Google Drive and Price Calculations
+
+// Convert Google Drive share links to direct image links
+export function convertGoogleDriveUrl(shareUrl: string): string {
+  const fileIdMatch = shareUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  if (fileIdMatch) {
+    return `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}`;
+  }
+  return shareUrl; // Return original if no match
+}
+
+// Price calculation schema and function
+export const PriceCalculatorSchema = z.object({
+  basePrice: z.number().min(0),
+  mileage: z.number().min(0),
+  year: z.number().min(1900),
+  condition: z.enum(["new", "used", "certified"]),
+  features: z.array(z.string()).default([]),
+  location: z.string().optional(),
+  make: z.string(),
+  model: z.string(),
+});
+
+export type PriceCalculatorInput = z.infer<typeof PriceCalculatorSchema>;
+
+export function calculateCarPrice(input: PriceCalculatorInput): {
+  adjustedPrice: number;
+  factors: Array<{ factor: string; adjustment: number; description: string }>;
+} {
+  let adjustedPrice = input.basePrice;
+  const factors: Array<{ factor: string; adjustment: number; description: string }> = [];
+  
+  // Age depreciation (5% per year for cars over 3 years old)
+  const currentYear = new Date().getFullYear();
+  const age = currentYear - input.year;
+  if (age > 3) {
+    const ageAdjustment = Math.pow(0.95, age - 3);
+    const ageReduction = input.basePrice * (1 - ageAdjustment);
+    adjustedPrice *= ageAdjustment;
+    factors.push({
+      factor: "Age Depreciation",
+      adjustment: -ageReduction,
+      description: `${age} years old (${((1 - ageAdjustment) * 100).toFixed(1)}% reduction)`
+    });
+  }
+  
+  // Mileage adjustment (reduce price by $0.10 per mile over 12,000 miles per year)
+  const expectedMileage = age * 12000;
+  const excessMileage = Math.max(0, input.mileage - expectedMileage);
+  if (excessMileage > 0) {
+    const mileageReduction = excessMileage * 0.10;
+    adjustedPrice -= mileageReduction;
+    factors.push({
+      factor: "High Mileage",
+      adjustment: -mileageReduction,
+      description: `${excessMileage.toLocaleString()} excess miles`
+    });
+  }
+  
+  // Condition adjustment
+  switch (input.condition) {
+    case "new":
+      // No adjustment for new cars
+      break;
+    case "certified":
+      const certifiedReduction = input.basePrice * 0.15;
+      adjustedPrice *= 0.85;
+      factors.push({
+        factor: "Certified Pre-Owned",
+        adjustment: -certifiedReduction,
+        description: "15% discount for certified status"
+      });
+      break;
+    case "used":
+      const usedReduction = input.basePrice * 0.25;
+      adjustedPrice *= 0.75;
+      factors.push({
+        factor: "Used Condition",
+        adjustment: -usedReduction,
+        description: "25% discount for used condition"
+      });
+      break;
+  }
+  
+  // Premium features bonus
+  const premiumFeatures = [
+    "Navigation System", "Leather Seats", "Sunroof", "Premium Audio", 
+    "All-Wheel Drive", "Heated Seats", "Backup Camera", "Bluetooth",
+    "Automatic Climate Control", "Remote Start"
+  ];
+  
+  const premiumCount = input.features.filter(feature => 
+    premiumFeatures.some(premium => feature.toLowerCase().includes(premium.toLowerCase()))
+  ).length;
+  
+  if (premiumCount > 0) {
+    const featureBonus = premiumCount * 1500;
+    adjustedPrice += featureBonus;
+    factors.push({
+      factor: "Premium Features",
+      adjustment: featureBonus,
+      description: `${premiumCount} premium features (+$1,500 each)`
+    });
+  }
+  
+  // Brand adjustment (luxury brands get a bonus)
+  const luxuryBrands = ["bmw", "mercedes", "audi", "lexus", "acura", "infiniti", "cadillac", "lincoln"];
+  if (luxuryBrands.includes(input.make.toLowerCase())) {
+    const brandBonus = input.basePrice * 0.1;
+    adjustedPrice += brandBonus;
+    factors.push({
+      factor: "Luxury Brand",
+      adjustment: brandBonus,
+      description: "10% bonus for luxury brand"
+    });
+  }
+  
+  return {
+    adjustedPrice: Math.max(1000, Math.round(adjustedPrice)), // Minimum price of $1,000
+    factors
+  };
+}
+
+// Search and Filter Schemas
+export const CarSearchSchema = z.object({
+  make: z.string().optional(),
+  model: z.string().optional(),
+  minPrice: z.number().min(0).optional(),
+  maxPrice: z.number().min(0).optional(),
+  minYear: z.number().min(1900).optional(),
+  maxYear: z.number().max(new Date().getFullYear() + 1).optional(),
+  fuelType: z.enum(["gasoline", "electric", "hybrid", "diesel"]).optional(),
+  transmission: z.enum(["automatic", "manual", "cvt"]).optional(),
+  bodyType: z.enum(["sedan", "suv", "hatchback", "convertible", "pickup", "coupe", "wagon", "minivan"]).optional(),
+  maxMileage: z.number().min(0).optional(),
+  condition: z.enum(["new", "used", "certified"]).optional(),
+  dealerId: z.string().optional(),
+  sortBy: z.enum(["price_asc", "price_desc", "year_desc", "mileage_asc", "created_desc"]).default("created_desc"),
+  limit: z.number().min(1).max(100).default(20),
+  offset: z.number().min(0).default(0),
+});
+
+export type CarSearchFilters = z.infer<typeof CarSearchSchema>;
