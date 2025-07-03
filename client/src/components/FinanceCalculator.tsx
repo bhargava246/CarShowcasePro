@@ -130,20 +130,18 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Loan Term</label>
-            <Select value={loanTerm} onValueChange={setLoanTerm}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="24">24 months</SelectItem>
-                <SelectItem value="36">36 months</SelectItem>
-                <SelectItem value="48">48 months</SelectItem>
-                <SelectItem value="60">60 months</SelectItem>
-                <SelectItem value="72">72 months</SelectItem>
-                <SelectItem value="84">84 months</SelectItem>
-              </SelectContent>
-            </Select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Loan Term (months)</label>
+            <Input 
+              type="number" 
+              value={loanTerm}
+              onChange={(e) => setLoanTerm(e.target.value)}
+              placeholder="60"
+              min="6"
+              max="120"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Common terms: 24, 36, 48, 60, 72 months
+            </p>
           </div>
           
           <div>
@@ -164,8 +162,7 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
             onClick={calculateFinancing}
             className="w-full bg-carstore-orange text-white hover:bg-carstore-orange-dark"
           >
-            <Calculator className="mr-2 h-4 w-4" />
-            Calculate Payment
+            Calculate
           </Button>
           
           
