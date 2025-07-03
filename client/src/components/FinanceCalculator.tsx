@@ -150,64 +150,20 @@ export default function FinanceCalculator({ carPrice, showTitle = true }: Financ
           </Button>
           
           {monthlyPayment !== null && (
-            <div className="mt-4 space-y-3">
-              <div className="p-4 bg-gradient-to-r from-carstore-orange/10 to-carstore-orange/5 rounded-lg border border-carstore-orange/20">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Monthly Payment:</span>
-                  <span className="text-2xl font-bold text-carstore-orange">
-                    ${monthlyPayment.toFixed(2)}
-                  </span>
+            <div className="mt-4">
+              <div className="p-4 bg-gradient-to-r from-carstore-orange/10 to-carstore-orange/5 rounded-lg border border-carstore-orange/20 text-center">
+                <div className="mb-2">
+                  <span className="text-sm text-gray-600">Monthly EMI</span>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Based on {loanTerm} months at {interestRate}% APR
+                <div className="text-3xl font-bold text-carstore-orange">
+                  ${monthlyPayment.toFixed(2)}
+                </div>
+                <p className="text-sm text-gray-500 mt-1">
+                  per month for {loanTerm} months
                 </p>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-1 mb-1">
-                    <TrendingUp className="h-3 w-3 text-gray-500" />
-                    <span className="text-gray-600">Total Interest</span>
-                  </div>
-                  <span className="font-semibold">${totalInterest?.toFixed(2) || '0'}</span>
-                </div>
-                
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-1 mb-1">
-                    <DollarSign className="h-3 w-3 text-gray-500" />
-                    <span className="text-gray-600">Total Cost</span>
-                  </div>
-                  <span className="font-semibold">
-                    ${((parseFloat(carPrice.toString()) - parseFloat(downPayment || '0')) + (totalInterest || 0)).toFixed(2)}
-                  </span>
-                </div>
               </div>
             </div>
           )}
-          
-          <Separator className="my-4" />
-          
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
-              <Shield className="h-4 w-4 text-carstore-orange" />
-              <span>Secure financing through trusted lenders</span>
-            </div>
-            
-            <Button variant="outline" className="w-full">
-              Get Pre-Approved
-            </Button>
-            <Button variant="outline" className="w-full">
-              Apply for Financing
-            </Button>
-            <Button variant="outline" className="w-full">
-              Compare Loan Options
-            </Button>
-            
-            <p className="text-xs text-gray-500 text-center mt-3">
-              * Rates may vary based on creditworthiness, loan term, and other factors.
-              Pre-approval does not guarantee final loan approval.
-            </p>
-          </div>
         </div>
       </CardContent>
     </Card>
