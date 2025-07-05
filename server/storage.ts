@@ -404,6 +404,14 @@ export class MemStorage implements IStorage {
     const id = this.currentReviewId++;
     const review: Review = { ...insertReview, id, createdAt: new Date() };
     this.reviews.set(id, review);
+    
+    // Update dealer rating and review count
+    if (insertReview.dealerId) {
+      const dealerReviews = Array.from(this.reviews.values()).filter(r => r.dealerId === insertReview.dealerId);
+      const averageRating = dealerReviews.reduce((sum, r) => sum + r.rating, 0) / dealerReviews.length;
+      await this.updateDealerRating(insertReview.dealerId, averageRating, dealerReviews.length);
+    }
+    
     return review;
   }
 

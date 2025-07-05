@@ -178,7 +178,11 @@ export default function DealerProfile() {
                         ))}
                       </div>
                       <span className="ml-2 text-orange-100">
-                        {dealer.rating} ({dealer.reviewCount} reviews)
+                        {(dealer.reviewCount || 0) > 0 ? (
+                          `${dealer.rating} (${dealer.reviewCount} reviews)`
+                        ) : (
+                          "No reviews yet"
+                        )}
                       </span>
                     </div>
                     {dealer.verified && (
@@ -312,7 +316,7 @@ export default function DealerProfile() {
                   <h2 className="text-2xl font-bold text-gray-900">Customer Reviews</h2>
                   <div className="flex items-center space-x-4">
                     <div className="text-sm text-gray-600">
-                      {dealer.reviewCount} reviews
+                      {(dealer.reviewCount || 0) > 0 ? `${dealer.reviewCount} reviews` : "No reviews yet"}
                     </div>
                     <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
                       <DialogTrigger asChild>
