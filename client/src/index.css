@@ -72,22 +72,22 @@
 
 @layer utilities {
   .text-carstore-orange {
-    color: var(--carstore-orange);
+    color: var(--luxury-orange);
   }
   
   .bg-carstore-orange {
-    background-color: var(--carstore-orange);
+    background-color: var(--luxury-orange);
   }
   
   .border-carstore-orange {
-    border-color: var(--carstore-orange);
+    border-color: var(--luxury-orange);
   }
   
   .hover\:bg-carstore-orange-dark:hover {
-    background-color: var(--carstore-orange-dark);
+    background-color: var(--luxury-orange-dark);
   }
   
   .hover\:text-carstore-orange:hover {
-    color: var(--carstore-orange);
+    color: var(--luxury-orange);
   }
 }
