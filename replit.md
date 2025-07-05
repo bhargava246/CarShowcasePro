@@ -110,6 +110,7 @@ CarStore is a full-stack car marketplace application built with React, Express.j
 - Replit integration with runtime error overlay and cartographer
 
 ## Changelog
+- July 05, 2025. Added comprehensive dealer profile page with inventory, reviews, and contact details. Made dealer cards clickable for better navigation.
 - July 03, 2025. Initial setup
 
 ## User Preferences

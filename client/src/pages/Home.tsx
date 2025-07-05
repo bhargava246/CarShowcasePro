@@ -146,43 +146,43 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               {dealers?.slice(0, 4).map((dealer) => (
-                <Card key={dealer.id} className="text-center hover:shadow-xl transition-shadow duration-300">
-                  <CardContent className="p-6">
-                    <img 
-                      src={dealer.imageUrl || "/placeholder-dealer.jpg"} 
-                      alt={dealer.name}
-                      className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" 
-                    />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{dealer.name}</h3>
-                    <p className="text-gray-600 text-sm mb-3">{dealer.location}</p>
-                    <div className="flex items-center justify-center mb-3">
-                      <div className="flex text-yellow-400">
-                        {Array.from({ length: 5 }, (_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < Math.floor(parseFloat(dealer.rating || "0")) ? "fill-current" : ""
-                            }`}
-                          />
-                        ))}
+                <Link key={dealer.id} href={`/dealers/${dealer.id}`}>
+                  <Card className="text-center hover:shadow-xl transition-shadow duration-300 cursor-pointer">
+                    <CardContent className="p-6">
+                      <img 
+                        src={dealer.imageUrl || "/placeholder-dealer.jpg"} 
+                        alt={dealer.name}
+                        className="w-20 h-20 rounded-full mx-auto mb-4 object-cover" 
+                      />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{dealer.name}</h3>
+                      <p className="text-gray-600 text-sm mb-3">{dealer.location}</p>
+                      <div className="flex items-center justify-center mb-3">
+                        <div className="flex text-yellow-400">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < Math.floor(parseFloat(dealer.rating || "0")) ? "fill-current" : ""
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-gray-600 text-sm ml-2">
+                          {dealer.rating} ({dealer.reviewCount})
+                        </span>
                       </div>
-                      <span className="text-gray-600 text-sm ml-2">
-                        {dealer.rating} ({dealer.reviewCount})
-                      </span>
-                    </div>
-                    <Badge className="bg-carstore-orange text-white mb-4">
-                      {dealer.verified ? "Verified" : "Pending"}
-                    </Badge>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Inventory Available
-                    </p>
-                    <Link href={`/dealers/${dealer.id}`}>
+                      <Badge className="bg-carstore-orange text-white mb-4">
+                        {dealer.verified ? "Verified" : "Pending"}
+                      </Badge>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Inventory Available
+                      </p>
                       <Button className="w-full bg-carstore-orange text-white hover:bg-carstore-orange-dark">
-                        View Inventory
+                        View Profile
                       </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           )}

@@ -95,7 +95,7 @@ export default function DealerProfile() {
                 <Avatar className="h-20 w-20 mr-4">
                   <AvatarImage src={dealer.imageUrl || ""} alt={dealer.name} />
                   <AvatarFallback className="bg-white text-carstore-orange text-2xl font-bold">
-                    {dealer.name.substring(0, 2).toUpperCase()}
+                    {dealer.name ? dealer.name.substring(0, 2).toUpperCase() : "D"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
