@@ -8,6 +8,7 @@ import CarDetail from "@/pages/CarDetail";
 import SearchResults from "@/pages/SearchResults";
 import Compare from "@/pages/Compare";
 import Dealers from "@/pages/Dealers";
+import DealerProfile from "@/pages/DealerProfile";
 import Wishlist from "@/pages/Wishlist";
 import NotFound from "@/pages/not-found";
 import Header from "@/components/Header";
@@ -24,6 +25,7 @@ function Router() {
           <Route path="/search" component={SearchResults} />
           <Route path="/compare" component={Compare} />
           <Route path="/dealers" component={Dealers} />
+          <Route path="/dealers/:id" component={DealerProfile} />
           <Route path="/wishlist" component={Wishlist} />
           <Route component={NotFound} />
         </Switch>
