@@ -41,7 +41,6 @@ export default function Home() {
   return (
     <div>
       <Hero />
-
       {/* Featured Cars Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,7 +72,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Advanced Search & Filters */}
       <section className="py-16 bg-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -85,7 +83,6 @@ export default function Home() {
           <SearchFilters onSearch={handleAdvancedSearch} />
         </div>
       </section>
-
       {/* Tools Section */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -96,7 +93,7 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <Card className="bg-gradient-to-br from-carstore-orange to-orange-600 text-white">
-              <CardContent className="p-8 text-center">
+              <CardContent className="p-8 text-center bg-[orange]">
                 <Calculator className="mx-auto h-12 w-12 mb-4" />
                 <h3 className="text-xl font-semibold mb-4">Car Price Calculator</h3>
                 <p className="text-orange-100 mb-6">Get an instant estimate of your car's value based on market data</p>
@@ -132,7 +129,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Trusted Dealers Section */}
       <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -192,7 +188,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
       {/* Car Comparison Tool Preview */}
       <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -260,7 +255,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
       {/* Floating Chat Widget */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button 
