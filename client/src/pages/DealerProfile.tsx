@@ -1,11 +1,17 @@
 import { useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { 
   MapPin, 
   Phone, 
@@ -26,9 +32,14 @@ import { Link } from "wouter";
 
 export default function DealerProfile() {
   const { id } = useParams<{ id: string }>();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isReviewDialogOpen, setIsReviewDialogOpen] = useState(false);
   
   const { data: dealer, isLoading: dealerLoading } = useQuery<Dealer>({
-    queryKey: ['/api/dealers', id],
+    queryKey: [`/api/dealers/${id}`],
     enabled: !!id,
   });
 
@@ -41,6 +52,56 @@ export default function DealerProfile() {
     queryKey: [`/api/reviews/dealer/${id}`],
     enabled: !!id,
   });
+
+  const submitReviewMutation = useMutation({
+    mutationFn: async (reviewData: { rating: number; comment: string }) => {
+      const response = await fetch("/api/reviews", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          dealerId: parseInt(id!),
+          userId: 1, // Hardcoded for now - in real app would come from auth
+          rating: reviewData.rating,
+          comment: reviewData.comment,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to submit review");
+      }
+      
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/reviews/dealer/${id}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/dealers/${id}`] });
+      setIsReviewDialogOpen(false);
+      setReviewComment("");
+      setReviewRating(5);
+      toast({
+        title: "Review submitted successfully!",
+        description: "Thank you for your feedback.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error submitting review",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmitReview = () => {
+    if (reviewComment.trim()) {
+      submitReviewMutation.mutate({
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+      });
+    }
+  };
 
   if (dealerLoading) {
     return (
@@ -249,8 +310,79 @@ export default function DealerProfile() {
               <TabsContent value="reviews" className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">Customer Reviews</h2>
-                  <div className="text-sm text-gray-600">
-                    {dealer.reviewCount} reviews
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-600">
+                      {dealer.reviewCount} reviews
+                    </div>
+                    <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-carstore-orange text-white hover:bg-carstore-orange-dark">
+                          <MessageCircle className="h-4 w-4 mr-2" />
+                          Write Review
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Write a Review for {dealer.name}</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="rating" className="text-sm font-medium">
+                              Rating
+                            </Label>
+                            <div className="flex items-center space-x-2 mt-2">
+                              {Array.from({ length: 5 }, (_, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => setReviewRating(i + 1)}
+                                  className="focus:outline-none"
+                                >
+                                  <Star
+                                    className={`h-6 w-6 ${
+                                      i < reviewRating 
+                                        ? "fill-yellow-400 text-yellow-400" 
+                                        : "text-gray-300"
+                                    } hover:text-yellow-400 transition-colors`}
+                                  />
+                                </button>
+                              ))}
+                              <span className="text-sm text-gray-600 ml-2">
+                                {reviewRating} out of 5 stars
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <Label htmlFor="comment" className="text-sm font-medium">
+                              Your Review
+                            </Label>
+                            <Textarea
+                              id="comment"
+                              placeholder="Share your experience with this dealer..."
+                              value={reviewComment}
+                              onChange={(e) => setReviewComment(e.target.value)}
+                              rows={4}
+                              className="mt-2"
+                            />
+                          </div>
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setIsReviewDialogOpen(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={handleSubmitReview}
+                              disabled={!reviewComment.trim() || submitReviewMutation.isPending}
+                              className="bg-carstore-orange text-white hover:bg-carstore-orange-dark"
+                            >
+                              {submitReviewMutation.isPending ? "Submitting..." : "Submit Review"}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
                 
