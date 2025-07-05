@@ -30,6 +30,7 @@ export interface IStorage {
     bodyType?: string;
     maxMileage?: number;
   }): Promise<Car[]>;
+  searchCarsByText(query: string): Promise<Car[]>;
   getFeaturedCars(): Promise<Car[]>;
   createCar(car: InsertCar): Promise<Car>;
   updateCar(id: number, updates: Partial<InsertCar>): Promise<Car | undefined>;
@@ -362,6 +363,32 @@ export class MemStorage implements IStorage {
       if (filters.maxMileage && car.mileage > filters.maxMileage) return false;
       
       return true;
+    });
+  }
+
+  async searchCarsByText(query: string): Promise<Car[]> {
+    const searchTerm = query.toLowerCase().trim();
+    
+    return Array.from(this.cars.values()).filter(car => {
+      if (!car.available) return false;
+      
+      // Search in make, model, and combined make+model
+      const fullName = `${car.make} ${car.model}`.toLowerCase();
+      const makeMatch = car.make.toLowerCase().includes(searchTerm);
+      const modelMatch = car.model.toLowerCase().includes(searchTerm);
+      const fullNameMatch = fullName.includes(searchTerm);
+      
+      // Search in year (exact match or part of full name)
+      const yearMatch = car.year.toString() === searchTerm || fullName.includes(searchTerm);
+      
+      // Search in body type and fuel type
+      const bodyTypeMatch = car.bodyType.toLowerCase().includes(searchTerm);
+      const fuelTypeMatch = car.fuelType.toLowerCase().includes(searchTerm);
+      
+      // Search in transmission
+      const transmissionMatch = car.transmission.toLowerCase().includes(searchTerm);
+      
+      return makeMatch || modelMatch || fullNameMatch || yearMatch || bodyTypeMatch || fuelTypeMatch || transmissionMatch;
     });
   }
 

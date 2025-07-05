@@ -39,6 +39,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxMileage: req.query.maxMileage ? parseInt(req.query.maxMileage as string) : undefined,
       };
 
+      // Handle general search query (from hero search bar)
+      const generalQuery = req.query.q as string;
+      if (generalQuery) {
+        // Use text-based search for general queries
+        const cars = await storage.searchCarsByText(generalQuery);
+        res.json(cars);
+        return;
+      }
+
       // Remove undefined values and "all" values
       Object.keys(filters).forEach(key => {
         const value = filters[key as keyof typeof filters];
