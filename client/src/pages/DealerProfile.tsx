@@ -145,6 +145,12 @@ export default function DealerProfile() {
     ? dealerCars.reduce((sum, car) => sum + parseFloat(car.price), 0) / dealerCars.length
     : 0;
 
+  // Calculate real-time stats from actual review data
+  const currentReviewCount = dealerReviews?.length || 0;
+  const currentAverageRating = dealerReviews?.length 
+    ? (dealerReviews.reduce((sum, review) => sum + review.rating, 0) / dealerReviews.length).toFixed(1)
+    : "0.0";
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
@@ -172,14 +178,14 @@ export default function DealerProfile() {
                           <Star
                             key={i}
                             className={`h-4 w-4 ${
-                              i < Math.floor(parseFloat(dealer.rating || "0")) ? "fill-current" : ""
+                              i < Math.floor(parseFloat(currentAverageRating)) ? "fill-current" : ""
                             }`}
                           />
                         ))}
                       </div>
                       <span className="ml-2 text-orange-100">
-                        {(dealer.reviewCount || 0) > 0 ? (
-                          `${dealer.rating} (${dealer.reviewCount} reviews)`
+                        {currentReviewCount > 0 ? (
+                          `${currentAverageRating} (${currentReviewCount} reviews)`
                         ) : (
                           "No reviews yet"
                         )}
@@ -315,7 +321,7 @@ export default function DealerProfile() {
                   <h2 className="text-2xl font-bold text-gray-900">Customer Reviews</h2>
                   <div className="flex items-center space-x-4">
                     <div className="text-sm text-gray-600">
-                      {(dealer.reviewCount || 0) > 0 ? `${dealer.reviewCount} reviews` : "No reviews yet"}
+                      {currentReviewCount > 0 ? `${currentReviewCount} reviews` : "No reviews yet"}
                     </div>
                     <Dialog open={isReviewDialogOpen} onOpenChange={setIsReviewDialogOpen}>
                       <DialogTrigger asChild>
@@ -539,11 +545,11 @@ export default function DealerProfile() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Average Rating</span>
-                  <span className="font-semibold">{dealer.rating}/5.0</span>
+                  <span className="font-semibold">{currentAverageRating}/5.0</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Total Reviews</span>
-                  <span className="font-semibold">{dealer.reviewCount}</span>
+                  <span className="font-semibold">{currentReviewCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Verified Status</span>
